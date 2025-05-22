@@ -1,5 +1,6 @@
 from textnode import TextNode, TextType
 from leafnode import LeafNode
+import re
 
 
 def text_node_to_html_node(text_node):
@@ -19,3 +20,24 @@ def text_node_to_html_node(text_node):
             return LeafNode("img", "", props={"src": text_node.url, "alt": text_node.text})
         case _:
             raise ValueError(f"Unsupported TextType: {text_node.text_type}")
+
+
+def split_nodes_delimiter(old_nodes, delimiter, text_type):
+    new_nodes = []
+
+    for node in old_nodes:
+        if node.text_type != TextType.TEXT:
+            new_nodes.append(node)
+            continue
+
+        parts = re.split(
+            f"{re.escape(delimiter)}(.*?){re.escape(delimiter)}", node.text)
+
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                if part:
+                    new_nodes.append(TextNode(part, TextType.TEXT))
+            else:
+                new_nodes.append(TextNode(part, text_type))
+
+    return new_nodes
