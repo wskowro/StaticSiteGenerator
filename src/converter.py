@@ -3,6 +3,7 @@ from leafnode import LeafNode
 from htmlnode import *
 from extractmarkdown import *
 from blocktype import *
+from parentnode import *
 import re
 
 
@@ -126,7 +127,7 @@ def markdown_to_blocks(markdown):
     return blocks
 
 
-def markdown_to_html_node(markdown) -> HTMLNode:
+def markdown_to_html_node(markdown):
     blocks = markdown_to_blocks(markdown)
     block_nodes = []
     for block in blocks:
@@ -136,42 +137,42 @@ def markdown_to_html_node(markdown) -> HTMLNode:
             level = len(re.match(r'^(#{1,6}) ', block).group(1))
             content = block[level+1:]  # skip "### "
             children = text_to_children(content)
-            block_nodes.append(HTMLNode(tag=f'h{level}', children=children))
+            block_nodes.append(ParentNode(tag=f'h{level}', children=children))
 
         elif block_type == Blocktype.CODE:
             code_text = re.sub(r'^```|```$', '', block).strip()
             text_node = TextNode(code_text, TextType.TEXT)
             code_child = text_node_to_html_node(text_node)
-            block_nodes.append(HTMLNode(tag='pre', children=[
-                               HTMLNode(tag='code', children=[code_child])]))
+            block_nodes.append(ParentNode(tag='pre', children=[
+                               ParentNode(tag='code', children=[code_child])]))
 
         elif block_type == Blocktype.QUOTE:
             content = block[2:] if block.startswith('> ') else block[1:]
             children = text_to_children(content)
-            block_nodes.append(HTMLNode(tag='blockquote', children=children))
+            block_nodes.append(ParentNode(tag='blockquote', children=children))
 
         elif block_type == Blocktype.UNORDERED_LIST:
             items = [line[2:]
                      for line in block.split('\n') if line.startswith('- ')]
             li_nodes = [
-                HTMLNode(tag='li', children=text_to_children(item)) for item in items]
-            block_nodes.append(HTMLNode(tag='ul', children=li_nodes))
+                ParentNode(tag='li', children=text_to_children(item)) for item in items]
+            block_nodes.append(ParentNode(tag='ul', children=li_nodes))
 
         elif block_type == Blocktype.ORDERED_LIST:
             items = [re.sub(r'^\d+\. ', '', line)
                      for line in block.split('\n') if re.match(r'^\d+\. ', line)]
             li_nodes = [
-                HTMLNode(tag='li', children=text_to_children(item)) for item in items]
-            block_nodes.append(HTMLNode(tag='ol', children=li_nodes))
+                ParentNode(tag='li', children=text_to_children(item)) for item in items]
+            block_nodes.append(ParentNode(tag='ol', children=li_nodes))
 
         elif block_type == Blocktype.PARAGRAPH:
             children = text_to_children(block)
-            block_nodes.append(HTMLNode(tag='p', children=children))
+            block_nodes.append(ParentNode(tag='p', children=children))
 
-    return HTMLNode(tag='div', children=block_nodes)
+    return ParentNode(tag='div', children=block_nodes)
 
 
-def text_to_children(text) -> list[HTMLNode]:
+def text_to_children(text) -> list[ParentNode]:
     # You should already have this function
     text_nodes = text_to_textnodes(text)
     html_nodes = [text_node_to_html_node(node) for node in text_nodes]
