@@ -1,6 +1,8 @@
 from textnode import TextNode, TextType
 from leafnode import LeafNode
+from htmlnode import *
 from extractmarkdown import *
+from blocktype import *
 import re
 
 
@@ -114,3 +116,63 @@ def text_to_textnodes(text):
     nodes = split_nodes_image(nodes)
     nodes = split_nodes_link(nodes)
     return nodes
+
+
+def markdown_to_blocks(markdown):
+    blocks = []
+    for block in markdown.split("\n\n"):
+        stripped_block = block.strip()
+        blocks.append(stripped_block)
+    return blocks
+
+
+def markdown_to_html_node(markdown) -> HTMLNode:
+    blocks = markdown_to_blocks(markdown)
+    block_nodes = []
+    for block in blocks:
+        block_type = block_to_block_type(block)
+
+        if block_type == Blocktype.HEADING:
+            level = len(re.match(r'^(#{1,6}) ', block).group(1))
+            content = block[level+1:]  # skip "### "
+            children = text_to_children(content)
+            block_nodes.append(HTMLNode(tag=f'h{level}', children=children))
+
+        elif block_type == Blocktype.CODE:
+            code_text = re.sub(r'^```|```$', '', block).strip()
+            text_node = TextNode(code_text, TextType.TEXT)
+            code_child = text_node_to_html_node(text_node)
+            block_nodes.append(HTMLNode(tag='pre', children=[
+                               HTMLNode(tag='code', children=[code_child])]))
+
+        elif block_type == Blocktype.QUOTE:
+            content = block[2:] if block.startswith('> ') else block[1:]
+            children = text_to_children(content)
+            block_nodes.append(HTMLNode(tag='blockquote', children=children))
+
+        elif block_type == Blocktype.UNORDERED_LIST:
+            items = [line[2:]
+                     for line in block.split('\n') if line.startswith('- ')]
+            li_nodes = [
+                HTMLNode(tag='li', children=text_to_children(item)) for item in items]
+            block_nodes.append(HTMLNode(tag='ul', children=li_nodes))
+
+        elif block_type == Blocktype.ORDERED_LIST:
+            items = [re.sub(r'^\d+\. ', '', line)
+                     for line in block.split('\n') if re.match(r'^\d+\. ', line)]
+            li_nodes = [
+                HTMLNode(tag='li', children=text_to_children(item)) for item in items]
+            block_nodes.append(HTMLNode(tag='ol', children=li_nodes))
+
+        elif block_type == Blocktype.PARAGRAPH:
+            children = text_to_children(block)
+            block_nodes.append(HTMLNode(tag='p', children=children))
+
+    return HTMLNode(tag='div', children=block_nodes)
+
+
+def text_to_children(text) -> list[HTMLNode]:
+    # You should already have this function
+    text_nodes = text_to_textnodes(text)
+    html_nodes = [text_node_to_html_node(node) for node in text_nodes]
+    return html_nodes
